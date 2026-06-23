@@ -1,16 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { listDrafts } from "@/lib/drafts.functions";
 import { BookMarked, FileText } from "lucide-react";
+import { useDrafts } from "@/lib/local-store";
 
 export const Route = createFileRoute("/_authenticated/drafts/")({
   component: DraftsList,
 });
 
 function DraftsList() {
-  const listFn = useServerFn(listDrafts);
-  const q = useQuery({ queryKey: ["drafts"], queryFn: () => listFn() });
+  const drafts = useDrafts();
 
   return (
     <div className="bg-parchment-paper h-full overflow-y-auto">
@@ -21,8 +18,7 @@ function DraftsList() {
         </div>
         <div className="gold-divider mt-3 w-32" />
 
-        {q.isLoading && <p className="mt-8 text-sm text-muted-foreground">Loading vault…</p>}
-        {q.data?.length === 0 && (
+        {drafts.length === 0 && (
           <div className="mt-12 rounded-sm border border-dashed border-border bg-card/50 p-10 text-center">
             <FileText className="mx-auto h-8 w-8 text-muted-foreground/60" />
             <p className="mt-3 text-sm text-muted-foreground">
@@ -31,7 +27,7 @@ function DraftsList() {
           </div>
         )}
         <div className="mt-8 space-y-3">
-          {q.data?.map((d) => (
+          {drafts.map((d) => (
             <Link
               key={d.id}
               to="/drafts/$draftId"

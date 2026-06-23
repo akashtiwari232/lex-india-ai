@@ -1,21 +1,13 @@
-import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
-import { listThreads, createThread, deleteThread } from "@/lib/threads.functions";
+import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LexLogo } from "@/components/lex-logo";
-import { Plus, MessageSquare, BookMarked, LogOut, Trash2 } from "lucide-react";
+import { Plus, MessageSquare, BookMarked, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useThreads, createThread, deleteThread } from "@/lib/local-store";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
-  },
   component: WorkspaceLayout,
 });
 
@@ -32,39 +24,18 @@ function WorkspaceLayout() {
 
 function ChambersSidebar() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const listThreadsFn = useServerFn(listThreads);
-  const createThreadFn = useServerFn(createThread);
-  const deleteThreadFn = useServerFn(deleteThread);
+  const threads = useThreads();
 
-  const threadsQuery = useQuery({
-    queryKey: ["threads"],
-    queryFn: () => listThreadsFn(),
-  });
+  function newDraft() {
+    const t = createThread({});
+    navigate({ to: "/chat/$threadId", params: { threadId: t.id } });
+  }
 
-  const createMut = useMutation({
-    mutationFn: () => createThreadFn({ data: {} }),
-    onSuccess: (t) => {
-      qc.invalidateQueries({ queryKey: ["threads"] });
-      navigate({ to: "/chat/$threadId", params: { threadId: t.id } });
-    },
-  });
-
-  const delMut = useMutation({
-    mutationFn: (id: string) => deleteThreadFn({ data: { id } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["threads"] });
-      toast.success("Brief discarded.");
-      if (pathname.startsWith("/chat/")) navigate({ to: "/chat" });
-    },
-  });
-
-  async function signOut() {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+  function removeThread(id: string) {
+    deleteThread(id);
+    toast.success("Brief discarded.");
+    if (pathname === `/chat/${id}`) navigate({ to: "/chat" });
   }
 
   return (
@@ -77,8 +48,7 @@ function ChambersSidebar() {
 
       <div className="p-3">
         <Button
-          onClick={() => createMut.mutate()}
-          disabled={createMut.isPending}
+          onClick={newDraft}
           className="w-full justify-start gap-2 border border-gold/40 bg-sidebar-accent text-sidebar-primary hover:bg-sidebar-accent/80"
           variant="ghost"
         >
@@ -91,15 +61,12 @@ function ChambersSidebar() {
         Briefs
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2">
-        {threadsQuery.isLoading && (
-          <div className="px-3 py-2 text-xs text-sidebar-foreground/60">Loading…</div>
-        )}
-        {threadsQuery.data?.length === 0 && (
+        {threads.length === 0 && (
           <div className="px-3 py-2 text-xs text-sidebar-foreground/60">
             No briefs yet. Begin a new draft.
           </div>
         )}
-        {threadsQuery.data?.map((t) => {
+        {threads.map((t) => {
           const active = pathname === `/chat/${t.id}`;
           return (
             <div
@@ -122,7 +89,7 @@ function ChambersSidebar() {
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  if (confirm("Discard this brief?")) delMut.mutate(t.id);
+                  if (confirm("Discard this brief?")) removeThread(t.id);
                 }}
                 className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
                 aria-label="Delete"
@@ -147,13 +114,12 @@ function ChambersSidebar() {
           <BookMarked className="h-4 w-4" />
           Saved Drafts
         </Link>
-        <button
-          onClick={signOut}
-          className="mt-1 flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        <Link
+          to="/"
+          className="mt-1 flex items-center gap-2 rounded-sm px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         >
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
+          Back to Home
+        </Link>
       </div>
     </aside>
   );

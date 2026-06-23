@@ -1,11 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { getDraft, deleteDraft } from "@/lib/drafts.functions";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useDraft, deleteDraft } from "@/lib/local-store";
 
 export const Route = createFileRoute("/_authenticated/drafts/$draftId")({
   component: DraftDetail,
@@ -14,47 +12,30 @@ export const Route = createFileRoute("/_authenticated/drafts/$draftId")({
 function DraftDetail() {
   const { draftId } = Route.useParams();
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const getFn = useServerFn(getDraft);
-  const delFn = useServerFn(deleteDraft);
+  const d = useDraft(draftId);
 
-  const q = useQuery({
-    queryKey: ["draft", draftId],
-    queryFn: () => getFn({ data: { id: draftId } }),
-  });
-
-  if (q.isLoading) {
-    return (
-      <div className="p-10 text-sm text-muted-foreground">Loading brief…</div>
-    );
+  if (!d) {
+    return <div className="p-10 text-sm text-muted-foreground">Draft not found.</div>;
   }
-  if (!q.data) {
-    return (
-      <div className="p-10 text-sm text-muted-foreground">Draft not found.</div>
-    );
-  }
-
-  const d = q.data;
 
   async function copy() {
-    await navigator.clipboard.writeText(d.content);
+    await navigator.clipboard.writeText(d!.content);
     toast.success("Brief copied.");
   }
 
   function download() {
-    const blob = new Blob([d.content], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([d!.content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${d.title.replace(/[^a-z0-9-_]+/gi, "_")}.txt`;
+    a.download = `${d!.title.replace(/[^a-z0-9-_]+/gi, "_")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function remove() {
+  function remove() {
     if (!confirm("Delete this saved draft?")) return;
-    await delFn({ data: { id: d.id } });
-    qc.invalidateQueries({ queryKey: ["drafts"] });
+    deleteDraft(d!.id);
     toast.success("Draft deleted.");
     navigate({ to: "/drafts" });
   }

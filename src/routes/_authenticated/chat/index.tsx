@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { listThreads, createThread } from "@/lib/threads.functions";
 import { DOC_CATEGORIES } from "@/lib/legal-system-prompt";
 import { Gavel } from "lucide-react";
+import { createThread } from "@/lib/local-store";
 
 export const Route = createFileRoute("/_authenticated/chat/")({
   component: ChatIndex,
@@ -11,21 +9,14 @@ export const Route = createFileRoute("/_authenticated/chat/")({
 
 function ChatIndex() {
   const navigate = useNavigate();
-  const listFn = useServerFn(listThreads);
-  const createFn = useServerFn(createThread);
 
-  useEffect(() => {
-    listFn().then((threads) => {
-      if (threads.length > 0) {
-        navigate({ to: "/chat/$threadId", params: { threadId: threads[0].id }, replace: true });
-      }
-    });
-  }, [listFn, navigate]);
+  function startDraft(category: string, type: string) {
+    const t = createThread({ doc_category: category, doc_type: type, title: type });
+    navigate({ to: "/chat/$threadId", params: { threadId: t.id } });
+  }
 
-  async function startDraft(category: string, type: string) {
-    const t = await createFn({
-      data: { doc_category: category, doc_type: type, title: type },
-    });
+  function startFreeForm() {
+    const t = createThread({});
     navigate({ to: "/chat/$threadId", params: { threadId: t.id } });
   }
 
@@ -41,7 +32,7 @@ function ChatIndex() {
             What shall we draft today, Counsel?
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Select a document type to brief LexIndia AI, or start a free-form session.
+            Free to use. No sign-in required. Select a document type or start a free-form session.
           </p>
           <div className="gold-divider mx-auto mt-6 max-w-md" />
         </div>
@@ -72,7 +63,7 @@ function ChatIndex() {
 
         <div className="mt-12 text-center">
           <button
-            onClick={() => createFn({ data: {} }).then((t) => navigate({ to: "/chat/$threadId", params: { threadId: t.id } }))}
+            onClick={startFreeForm}
             className="rounded-sm border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition hover:border-gold/60"
           >
             Start a free-form drafting session
