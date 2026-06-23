@@ -83,6 +83,21 @@ function ChatView({ threadId }: { threadId: string }) {
     composerRef.current?.focus();
   }, [threadId, status]);
 
+  // Auto-send a pending intake prompt (handed off from the Intake form).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!thread) return;
+    if (storedMessages.length > 0) return;
+    const key = `lexindia.pending.${threadId}`;
+    const pending = sessionStorage.getItem(key);
+    if (!pending) return;
+    sessionStorage.removeItem(key);
+    addMessage({ thread_id: threadId, role: "user", content: pending });
+    updateThread(threadId, { title: thread.doc_type || thread.title });
+    void sendMessage({ text: pending });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, thread]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);

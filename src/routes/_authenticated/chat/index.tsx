@@ -11,8 +11,7 @@ function ChatIndex() {
   const navigate = useNavigate();
 
   function startDraft(category: string, type: string) {
-    const t = createThread({ doc_category: category, doc_type: type, title: type });
-    navigate({ to: "/chat/$threadId", params: { threadId: t.id } });
+    navigate({ to: "/intake", search: { category, type } });
   }
 
   function startFreeForm() {
