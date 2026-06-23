@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedIntakeRouteImport } from './routes/_authenticated/intake'
 import { Route as AuthenticatedDraftsIndexRouteImport } from './routes/_authenticated/drafts/index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat/index'
 import { Route as AuthenticatedDraftsDraftIdRouteImport } from './routes/_authenticated/drafts/$draftId'
@@ -30,6 +31,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIntakeRoute = AuthenticatedIntakeRouteImport.update({
+  id: '/intake',
+  path: '/intake',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDraftsIndexRoute =
   AuthenticatedDraftsIndexRouteImport.update({
@@ -57,6 +63,7 @@ const AuthenticatedChatThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/intake': typeof AuthenticatedIntakeRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/intake': typeof AuthenticatedIntakeRoute
   '/api/chat': typeof ApiChatRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/_authenticated/intake': typeof AuthenticatedIntakeRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/_authenticated/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/intake'
     | '/api/chat'
     | '/chat/$threadId'
     | '/drafts/$draftId'
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/intake'
     | '/api/chat'
     | '/chat/$threadId'
     | '/drafts/$draftId'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/_authenticated/intake'
     | '/api/chat'
     | '/_authenticated/chat/$threadId'
     | '/_authenticated/drafts/$draftId'
@@ -138,6 +150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/intake': {
+      id: '/_authenticated/intake'
+      path: '/intake'
+      fullPath: '/intake'
+      preLoaderRoute: typeof AuthenticatedIntakeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/drafts/': {
       id: '/_authenticated/drafts/'
       path: '/drafts'
@@ -170,6 +189,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIntakeRoute: typeof AuthenticatedIntakeRoute
   AuthenticatedChatThreadIdRoute: typeof AuthenticatedChatThreadIdRoute
   AuthenticatedDraftsDraftIdRoute: typeof AuthenticatedDraftsDraftIdRoute
   AuthenticatedChatIndexRoute: typeof AuthenticatedChatIndexRoute
@@ -177,6 +197,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIntakeRoute: AuthenticatedIntakeRoute,
   AuthenticatedChatThreadIdRoute: AuthenticatedChatThreadIdRoute,
   AuthenticatedDraftsDraftIdRoute: AuthenticatedDraftsDraftIdRoute,
   AuthenticatedChatIndexRoute: AuthenticatedChatIndexRoute,
