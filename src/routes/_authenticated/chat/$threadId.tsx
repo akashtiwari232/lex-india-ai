@@ -1,17 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getThread } from "@/lib/threads.functions";
-import { saveDraft } from "@/lib/drafts.functions";
-import { supabase } from "@/integrations/supabase/client";
 import { LegalMarkdown } from "@/components/legal-markdown";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { BookmarkPlus, Send, Loader2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import {
+  useThread,
+  useThreadMessages,
+  addMessage,
+  updateThread,
+  saveDraft,
+} from "@/lib/local-store";
 
 export const Route = createFileRoute("/_authenticated/chat/$threadId")({
   component: ChatThread,
@@ -24,49 +26,52 @@ function ChatThread() {
 
 function ChatView({ threadId }: { threadId: string }) {
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const getThreadFn = useServerFn(getThread);
-  const saveDraftFn = useServerFn(saveDraft);
+  const thread = useThread(threadId);
+  const storedMessages = useThreadMessages(threadId);
 
-  const threadQuery = useQuery({
-    queryKey: ["thread", threadId],
-    queryFn: () => getThreadFn({ data: { id: threadId } }),
-  });
-
-  // Once thread is missing, redirect away
   useEffect(() => {
-    if (threadQuery.data === null) navigate({ to: "/chat" });
-  }, [threadQuery.data, navigate]);
+    if (!thread) navigate({ to: "/chat" });
+  }, [thread, navigate]);
 
-  const initialMessages: UIMessage[] = (threadQuery.data?.messages ?? []).map((m) => ({
-    id: m.id,
-    role: m.role as "user" | "assistant",
-    parts: [{ type: "text", text: m.content }],
-  }));
+  const initialMessages: UIMessage[] = useMemo(
+    () =>
+      storedMessages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        parts: [{ type: "text", text: m.content }],
+      })),
+    // Only seed once per thread mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [threadId],
+  );
 
-  const transport = new DefaultChatTransport({
-    api: "/api/chat",
-    fetch: async (url, init) => {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      const headers = new Headers(init?.headers);
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      // pass threadId and doc context via body augmentation
-      const body = init?.body ? JSON.parse(init.body as string) : {};
-      body.threadId = threadId;
-      body.docCategory = threadQuery.data?.thread.doc_category ?? null;
-      body.docType = threadQuery.data?.thread.doc_type ?? null;
-      return fetch(url, { ...init, headers, body: JSON.stringify(body) });
-    },
-  });
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        fetch: async (url, init) => {
+          const body = init?.body ? JSON.parse(init.body as string) : {};
+          body.docCategory = thread?.doc_category ?? null;
+          body.docType = thread?.doc_type ?? null;
+          return fetch(url, { ...init, body: JSON.stringify(body) });
+        },
+      }),
+    [thread?.doc_category, thread?.doc_type],
+  );
 
   const { messages, sendMessage, status } = useChat({
     id: threadId,
     messages: initialMessages,
     transport,
     onError: (e) => toast.error(e.message),
-    onFinish: () => {
-      qc.invalidateQueries({ queryKey: ["threads"] });
+    onFinish: ({ message }) => {
+      const text = message.parts
+        .map((p) => (p.type === "text" ? p.text : ""))
+        .join("")
+        .trim();
+      if (text) {
+        addMessage({ thread_id: threadId, role: "assistant", content: text });
+      }
     },
   });
 
@@ -88,52 +93,43 @@ function ChatView({ threadId }: { threadId: string }) {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
+    // Persist user message + auto-title
+    addMessage({ thread_id: threadId, role: "user", content: text });
+    if (thread && (thread.title === "New Draft" || !thread.title)) {
+      updateThread(threadId, { title: text.slice(0, 80) });
+    }
     await sendMessage({ text });
   }
 
-  async function handleSave(content: string, idx: number) {
-    const title =
-      threadQuery.data?.thread.doc_type ||
-      threadQuery.data?.thread.title ||
-      `Draft ${new Date().toLocaleDateString("en-IN")}`;
-    await saveDraftFn({
-      data: {
-        title: `${title} — Draft ${idx + 1}`,
-        content,
-        doc_type: threadQuery.data?.thread.doc_type ?? null,
-        thread_id: threadId,
-      },
+  function handleSave(content: string, idx: number) {
+    const title = thread?.doc_type || thread?.title || `Draft ${new Date().toLocaleDateString("en-IN")}`;
+    saveDraft({
+      title: `${title} — Draft ${idx + 1}`,
+      content,
+      doc_type: thread?.doc_type ?? null,
+      thread_id: threadId,
     });
-    qc.invalidateQueries({ queryKey: ["drafts"] });
     toast.success("Saved to your drafts.");
   }
-
-  const meta = threadQuery.data?.thread;
 
   return (
     <div className="bg-parchment-paper flex h-full flex-col">
       <header className="border-b border-border bg-card/60 px-6 py-3 backdrop-blur">
         <div className="mx-auto max-w-4xl">
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            {meta?.doc_category ?? "Chambers"}
+            {thread?.doc_category ?? "Chambers"}
           </div>
           <h1 className="font-serif text-xl font-semibold text-foreground">
-            {meta?.doc_type || meta?.title || "New Brief"}
+            {thread?.doc_type || thread?.title || "New Brief"}
           </h1>
         </div>
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-          {messages.length === 0 && (
-            <EmptyHint docType={meta?.doc_type ?? null} />
-          )}
+          {messages.length === 0 && <EmptyHint docType={thread?.doc_type ?? null} />}
           {messages.map((m, i) => (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              onSave={(text) => handleSave(text, i)}
-            />
+            <MessageBubble key={m.id} message={m} onSave={(text) => handleSave(text, i)} />
           ))}
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -168,7 +164,7 @@ function ChatView({ threadId }: { threadId: string }) {
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
             LexIndia AI drafts under your supervision. Verify citations and procedural details before
-            filing.
+            filing. Briefs are stored privately in your browser.
           </p>
         </div>
       </div>

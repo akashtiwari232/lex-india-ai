@@ -32,13 +32,13 @@ function Landing() {
         </div>
         <nav className="flex items-center gap-3 text-sm">
           <Link
-            to="/auth"
+            to="/drafts"
             className="rounded-sm px-4 py-2 text-foreground/80 transition hover:text-primary"
           >
-            Sign in
+            Saved Drafts
           </Link>
           <Link
-            to="/auth"
+            to="/chat"
             className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
           >
             Enter Chambers
@@ -67,11 +67,11 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                to="/auth"
+                to="/chat"
                 className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
               >
                 <Gavel className="h-4 w-4" />
-                Begin Drafting
+                Begin Drafting — Free
               </Link>
               <a
                 href="#capabilities"
