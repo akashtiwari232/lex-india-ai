@@ -1,32 +1,64 @@
-## LexIndia AI — Build Plan
+## LexLaw AI — Major Upgrade Plan
 
-A senior-advocate-grade legal drafting workspace for Indian law (Constitution, BNS, BNSS, BSA, CPC, Contract Act, Family, Corporate, IP, Labour, Cyber, Environmental, Tax, ADR, Consumer). Users pick a document type, chat with the AI, get a court-ready draft, and save it to a personal library.
+Rebrand and add: auth, PDF export, citation checks, version history, dynamic intake, templates library, per-user document history.
 
-### Visual direction — "Court Chambers"
-Inspired by Indian high-court chambers: deep oxblood/burgundy `#5C1A1B`, warm parchment cream `#F5EDD8`, antique gold `#B5893A`, ink-black text `#1A1410`. Serif headings (Cormorant Garamond) paired with clean sans body (Inter). Subtle paper texture on surfaces, gold hairline dividers, monogram "L" seal in sidebar. No purple, no generic SaaS gradients.
+### 1. Rebrand: LexIndia AI → LexLaw AI
+- Update `src/components/lex-logo.tsx`, landing page, system prompt header, sidebar, page titles, meta tags, `__root.tsx` head.
+- Global find/replace of user-facing "LexIndia" → "LexLaw".
 
-### Scope (first version)
-1. **Auth** — Lovable Cloud email/password + Google sign-in, `/auth` route.
-2. **Workspace shell** — Collapsible sidebar (chambers branding, conversation threads list, "New Draft" button, "Saved Drafts" link, sign-out).
-3. **Drafting chat** — Per-thread route `/chat/$threadId`. Document-type picker (categories: Litigation, Constitutional, Family, Corporate, Property, IP, Employment, Notices, Regulatory) refines the system prompt. Streaming AI responses rendered as markdown (drafts include court heading, cause title, facts, grounds, prayer, verification per spec). "Save as Draft" button on each assistant message.
-4. **Saved Drafts library** — `/drafts` list + `/drafts/$id` detail view with copy / download as .txt.
-5. **Landing page** — Brief marketing intro with sign-in CTA.
+### 2. Authentication (JWT, signup-gated)
+- Enable Lovable Cloud email/password + Google OAuth.
+- New `/auth` route with **Sign Up** and **Sign In** tabs. Only signed-up users can sign in (default Supabase behavior).
+- Restore `_authenticated/route.tsx` as a real auth gate (`ssr: false`, redirect to `/auth` if no session).
+- Sidebar shows the logged-in user's email + Sign Out button.
+- Landing "Begin Drafting" → routes to `/auth` if logged out, else `/chat`.
 
-### Technical approach
-- **Stack**: TanStack Start + Lovable Cloud (Supabase).
-- **AI**: Lovable AI Gateway via `createServerFn` chat route at `src/routes/api/chat.ts` using `streamText` with `google/gemini-3-flash-preview`. System prompt embeds the full LexIndia legal expert persona + selected document type context.
-- **Persistence**: Tables `threads(id, user_id, title, doc_category, doc_type, created_at)`, `messages(id, thread_id, user_id, role, content, created_at)`, `drafts(id, user_id, thread_id, title, doc_type, content, created_at)`. RLS scoped to `auth.uid()`.
-- **Routes**:
-  - `/` landing (public)
-  - `/auth` (public)
-  - `/_authenticated/chat` redirects to newest or new thread
-  - `/_authenticated/chat/$threadId` drafting workspace
-  - `/_authenticated/drafts` library
-  - `/_authenticated/drafts/$draftId` detail
-- **Server fns** (`src/lib/*.functions.ts`): `listThreads`, `createThread`, `getThread`, `getMessages`, `deleteThread`, `saveDraft`, `listDrafts`, `getDraft`, `deleteDraft`. Chat streaming uses route handler + `requireSupabaseAuth` equivalent via bearer; user message + assistant message persisted in `onFinish`.
-- **Design tokens** in `src/styles.css` (oklch): `--background`, `--card` (parchment), `--primary` (oxblood), `--accent` (gold), `--foreground` (ink). Button variants: `chambers` (oxblood), `gold` (gold outline). Cormorant Garamond + Inter via `@fontsource`.
+### 3. Server-backed user history (replaces localStorage)
+- Re-enable Supabase tables `threads`, `messages`, `drafts` (already exist) with RLS scoped to `auth.uid()`.
+- Add `draft_versions` table for version history (draft_id, version_no, content, created_at).
+- Add `templates` table (seeded, public read) for the templates library.
+- Replace `local-store.ts` calls with server functions (`*.functions.ts`) using `requireSupabaseAuth`.
+- Restore bearer token middleware in `src/start.ts`.
 
-### Out of scope (this version)
-- True legal RAG over judgments corpus (the system prompt encodes the knowledge boundaries; retrieval can be added later).
-- Citation validation agent / multi-agent LangGraph workflow (single-prompt drafting first).
-- PDF export (markdown copy / .txt download only — can add later).
+### 4. Dynamic Intake Questions
+- Upgrade `intake-schema.ts`: each doc type defines an initial set of fields; after submission, an AI "Intake Agent" server fn analyzes answers and returns follow-up questions (JSON) tailored to the case (e.g., bail → ask about prior convictions if accused has any).
+- Intake page becomes multi-step: base form → AI-generated follow-ups → final brief assembly.
+
+### 5. Document Templates Library
+- New `/templates` route: grid of pre-built templates by category (Bail, Writ, Divorce Petition, Sale Deed, NDA, Sec 138 Notice, etc.).
+- Click a template → pre-fills intake form → drafts via AI.
+- Seeded via migration into `templates` table.
+
+### 6. Citation Validation
+- New server fn `validateCitations`: extracts citations (regex for "AIR YYYY SC NNN", "(YYYY) N SCC NNN", section refs to BNS/BNSS/BSA/CPC/IPC/Constitution Articles) from a draft and runs them through the AI with a strict verifier prompt to flag suspicious/likely-hallucinated citations.
+- Chat draft view shows a "Verify Citations" button → renders a panel with each citation marked ✓ verified / ⚠ uncertain / ✗ likely incorrect with notes.
+
+### 7. Version History
+- Every time the AI produces a new draft in a thread, also insert a row into `draft_versions` (linked to the saved draft).
+- "Save" action creates v1; subsequent edits/regenerations bump version.
+- Draft detail page (`/drafts/$draftId`) gets a Versions sidebar to view/restore any version.
+
+### 8. PDF Export + Viewer
+- Install `@react-pdf/renderer` (Worker-compatible, pure JS).
+- New component `LegalPdfDocument` renders the draft with proper court formatting (serif, headings, cause title, prayer, verification block, page numbers, footer).
+- "View PDF" opens in-app modal with embedded PDF preview (`<PDFViewer>` on client only).
+- "Download PDF" triggers `pdf().toBlob()` save.
+- Available on each AI response in chat AND on saved drafts page.
+- "My PDFs" page lists all saved drafts and lets the user re-view/download.
+
+### Technical Notes
+- Stack: TanStack Start, Supabase (Lovable Cloud), Lovable AI Gateway (`google/gemini-3-flash-preview`).
+- All schema changes via one migration (tables + RLS + GRANT + seed templates).
+- `_authenticated/route.tsx` becomes the real gate; chat/intake/drafts/templates all move under it.
+- `chat.ts` API: add `requireSupabaseAuth` middleware — drafting only for signed-in users.
+- `local-store.ts` removed; all data flows through server fns + TanStack Query.
+
+### Deliverable order
+1. Migration + auth wiring
+2. Rebrand + auth UI
+3. Server fns replacing local-store
+4. PDF export
+5. Templates library
+6. Dynamic intake (AI follow-ups)
+7. Citation checks
+8. Version history UI
