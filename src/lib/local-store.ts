@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type LocalThread = {
   id: string;
@@ -17,6 +18,13 @@ export type LocalMessage = {
   created_at: string;
 };
 
+export type DraftVersion = {
+  version: number;
+  content: string;
+  created_at: string;
+  note?: string;
+};
+
 export type LocalDraft = {
   id: string;
   thread_id: string | null;
@@ -24,26 +32,63 @@ export type LocalDraft = {
   doc_type: string | null;
   content: string;
   created_at: string;
+  updated_at: string;
+  versions: DraftVersion[];
 };
 
-const THREADS_KEY = "lexindia.threads.v1";
-const MESSAGES_KEY = "lexindia.messages.v1";
-const DRAFTS_KEY = "lexindia.drafts.v1";
+let currentUserId: string | null = null;
+
+function loadUser() {
+  if (typeof window === "undefined") return;
+  try {
+    const u = window.localStorage.getItem("lexlaw.currentUser");
+    currentUserId = u || null;
+  } catch {
+    currentUserId = null;
+  }
+}
+loadUser();
+
+if (typeof window !== "undefined") {
+  // Keep currentUserId in sync with Supabase session.
+  supabase.auth.getUser().then(({ data }) => {
+    setCurrentUser(data.user?.id ?? null);
+  });
+  supabase.auth.onAuthStateChange((_e, session) => {
+    setCurrentUser(session?.user?.id ?? null);
+  });
+}
+
+export function setCurrentUser(userId: string | null) {
+  if (currentUserId === userId) return;
+  currentUserId = userId;
+  if (typeof window !== "undefined") {
+    if (userId) window.localStorage.setItem("lexlaw.currentUser", userId);
+    else window.localStorage.removeItem("lexlaw.currentUser");
+  }
+  notify();
+}
+
+function ns(key: string) {
+  return `lexlaw.${currentUserId ?? "anon"}.${key}`;
+}
+const THREADS = "threads.v2";
+const MESSAGES = "messages.v2";
+const DRAFTS = "drafts.v2";
 
 const subscribers = new Set<() => void>();
 function subscribe(fn: () => void) {
   subscribers.add(fn);
+  let unsubStorage = () => {};
   if (typeof window !== "undefined") {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === THREADS_KEY || e.key === MESSAGES_KEY || e.key === DRAFTS_KEY) fn();
-    };
+    const onStorage = () => fn();
     window.addEventListener("storage", onStorage);
-    return () => {
-      subscribers.delete(fn);
-      window.removeEventListener("storage", onStorage);
-    };
+    unsubStorage = () => window.removeEventListener("storage", onStorage);
   }
-  return () => subscribers.delete(fn);
+  return () => {
+    subscribers.delete(fn);
+    unsubStorage();
+  };
 }
 function notify() {
   subscribers.forEach((fn) => fn());
@@ -52,7 +97,7 @@ function notify() {
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(ns(key));
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -61,7 +106,7 @@ function read<T>(key: string, fallback: T): T {
 }
 function write<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+  window.localStorage.setItem(ns(key), JSON.stringify(value));
   notify();
 }
 
@@ -70,15 +115,9 @@ export function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function getThreadsSnapshot(): LocalThread[] {
-  return read<LocalThread[]>(THREADS_KEY, []);
-}
-function getMessagesSnapshot(): LocalMessage[] {
-  return read<LocalMessage[]>(MESSAGES_KEY, []);
-}
-function getDraftsSnapshot(): LocalDraft[] {
-  return read<LocalDraft[]>(DRAFTS_KEY, []);
-}
+const getThreadsSnapshot = () => read<LocalThread[]>(THREADS, []);
+const getMessagesSnapshot = () => read<LocalMessage[]>(MESSAGES, []);
+const getDraftsSnapshot = () => read<LocalDraft[]>(DRAFTS, []);
 
 export function useThreads(): LocalThread[] {
   return useSyncExternalStore(subscribe, getThreadsSnapshot, () => [] as LocalThread[]);
@@ -113,33 +152,27 @@ export function createThread(input: {
     created_at: now,
     updated_at: now,
   };
-  const all = getThreadsSnapshot();
-  write(THREADS_KEY, [t, ...all]);
+  write(THREADS, [t, ...getThreadsSnapshot()]);
   return t;
 }
 
 export function updateThread(id: string, patch: Partial<Omit<LocalThread, "id" | "created_at">>) {
-  const all = getThreadsSnapshot();
-  const next = all.map((t) =>
-    t.id === id ? { ...t, ...patch, updated_at: new Date().toISOString() } : t,
+  write(
+    THREADS,
+    getThreadsSnapshot().map((t) =>
+      t.id === id ? { ...t, ...patch, updated_at: new Date().toISOString() } : t,
+    ),
   );
-  write(THREADS_KEY, next);
 }
 
 export function deleteThread(id: string) {
-  write(
-    THREADS_KEY,
-    getThreadsSnapshot().filter((t) => t.id !== id),
-  );
-  write(
-    MESSAGES_KEY,
-    getMessagesSnapshot().filter((m) => m.thread_id !== id),
-  );
+  write(THREADS, getThreadsSnapshot().filter((t) => t.id !== id));
+  write(MESSAGES, getMessagesSnapshot().filter((m) => m.thread_id !== id));
 }
 
 export function addMessage(msg: Omit<LocalMessage, "id" | "created_at">): LocalMessage {
   const m: LocalMessage = { ...msg, id: newId(), created_at: new Date().toISOString() };
-  write(MESSAGES_KEY, [...getMessagesSnapshot(), m]);
+  write(MESSAGES, [...getMessagesSnapshot(), m]);
   updateThread(msg.thread_id, {});
   return m;
 }
@@ -150,23 +183,63 @@ export function saveDraft(input: {
   doc_type?: string | null;
   thread_id?: string | null;
 }): LocalDraft {
+  const now = new Date().toISOString();
+  // If a draft already exists for this thread, append a version instead.
+  const drafts = getDraftsSnapshot();
+  if (input.thread_id) {
+    const existing = drafts.find((d) => d.thread_id === input.thread_id);
+    if (existing) {
+      const nextVersion = existing.versions.length + 1;
+      const updated: LocalDraft = {
+        ...existing,
+        title: input.title,
+        content: input.content,
+        updated_at: now,
+        versions: [
+          ...existing.versions,
+          { version: nextVersion, content: input.content, created_at: now },
+        ],
+      };
+      write(DRAFTS, drafts.map((d) => (d.id === existing.id ? updated : d)));
+      return updated;
+    }
+  }
   const d: LocalDraft = {
     id: newId(),
     title: input.title,
     content: input.content,
     doc_type: input.doc_type ?? null,
     thread_id: input.thread_id ?? null,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
+    versions: [{ version: 1, content: input.content, created_at: now }],
   };
-  write(DRAFTS_KEY, [d, ...getDraftsSnapshot()]);
+  write(DRAFTS, [d, ...drafts]);
   return d;
 }
 
+export function restoreVersion(draftId: string, version: number) {
+  const drafts = getDraftsSnapshot();
+  const d = drafts.find((x) => x.id === draftId);
+  if (!d) return;
+  const v = d.versions.find((x) => x.version === version);
+  if (!v) return;
+  const now = new Date().toISOString();
+  const nextVersion = d.versions.length + 1;
+  const updated: LocalDraft = {
+    ...d,
+    content: v.content,
+    updated_at: now,
+    versions: [
+      ...d.versions,
+      { version: nextVersion, content: v.content, created_at: now, note: `Restored from v${version}` },
+    ],
+  };
+  write(DRAFTS, drafts.map((x) => (x.id === draftId ? updated : x)));
+}
+
 export function deleteDraft(id: string) {
-  write(
-    DRAFTS_KEY,
-    getDraftsSnapshot().filter((d) => d.id !== id),
-  );
+  write(DRAFTS, getDraftsSnapshot().filter((d) => d.id !== id));
 }
 
 export function useStoreActions() {
