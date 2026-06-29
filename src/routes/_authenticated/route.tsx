@@ -30,16 +30,16 @@ function WorkspaceLayout() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/auth" });
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
     return (
       <div className="bg-parchment-paper flex h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
-  }
-  if (!user) {
-    navigate({ to: "/auth" });
-    return null;
   }
 
   return (
