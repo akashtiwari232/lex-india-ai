@@ -4,7 +4,7 @@ import { Scale, Gavel, FileText, BookOpen, ShieldCheck, Sparkles } from "lucide-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LexIndia AI — Senior Advocate Drafting Agent" },
+      { title: "LexLaw AI — Senior Advocate Drafting Agent" },
       {
         name: "description",
         content:
@@ -24,7 +24,7 @@ function Landing() {
             L
           </span>
           <div className="leading-tight">
-            <div className="font-serif text-xl font-semibold tracking-tight">LexIndia AI</div>
+            <div className="font-serif text-xl font-semibold tracking-tight">LexLaw AI</div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Court · Chambers · Counsel
             </div>
@@ -60,7 +60,7 @@ function Landing() {
             </h1>
             <div className="gold-divider my-6 w-40" />
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-              LexIndia AI drafts writ petitions, plaints, bail applications, legal notices,
+              LexLaw AI drafts writ petitions, plaints, bail applications, legal notices,
               contracts and tribunal pleadings — formatted for filing in Indian courts and
               grounded in the BNS, BNSS, BSA, CPC, the Constitution of India and contemporary
               jurisprudence.
@@ -110,7 +110,7 @@ function Landing() {
               </div>
               <div className="gold-divider mt-5" />
               <div className="mt-3 text-right font-serif text-xs italic text-muted-foreground">
-                Drafted by LexIndia AI
+                Drafted by LexLaw AI
               </div>
             </div>
           </div>
@@ -145,7 +145,7 @@ function Landing() {
         </section>
 
         <footer className="mt-24 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          LexIndia AI provides drafting assistance only. Outputs require advocate review prior
+          LexLaw AI provides drafting assistance only. Outputs require advocate review prior
           to filing. Not a substitute for licensed legal counsel.
         </footer>
       </main>

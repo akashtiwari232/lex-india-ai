@@ -31,7 +31,7 @@ function ChatIndex() {
             What shall we draft today, Counsel?
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Free to use. No sign-in required. Select a document type or start a free-form session.
+            Select a document type or start a free-form session.
           </p>
           <div className="gold-divider mx-auto mt-6 max-w-md" />
         </div>

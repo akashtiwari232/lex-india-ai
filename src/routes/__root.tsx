@@ -81,14 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LexIndia AI — Senior Advocate Drafting" },
+      { title: "LexLaw AI — Senior Advocate Drafting" },
       {
         name: "description",
         content:
           "Court-ready Indian legal drafting assistant. Draft writs, plaints, bail applications, contracts, and notices with citations to BNS, BNSS, BSA, CPC, the Constitution and more.",
       },
-      { name: "author", content: "LexIndia AI" },
-      { property: "og:title", content: "LexIndia AI — Senior Advocate Drafting" },
+      { name: "author", content: "LexLaw AI" },
+      { property: "og:title", content: "LexLaw AI — Senior Advocate Drafting" },
       {
         property: "og:description",
         content:

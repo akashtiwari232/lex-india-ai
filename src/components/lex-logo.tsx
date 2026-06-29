@@ -1,15 +1,15 @@
-import { cn } from "@/lib/utils";
-
-export function LexLogo({ className }: { className?: string }) {
+export function LexLogo() {
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <span className="grid h-9 w-9 place-items-center rounded-sm border border-gold/60 bg-sidebar-accent font-serif text-lg font-semibold text-gold shadow-inner">
+    <div className="flex items-center gap-3">
+      <span className="grid h-9 w-9 place-items-center rounded-sm border border-primary/30 bg-card font-serif text-lg font-semibold text-primary">
         L
       </span>
       <div className="leading-tight">
-        <div className="font-serif text-lg font-semibold tracking-tight">LexIndia AI</div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-gold/80">
-          Court · Chambers · Counsel
+        <div className="font-serif text-base font-semibold tracking-tight text-sidebar-primary">
+          LexLaw AI
+        </div>
+        <div className="text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/60">
+          Senior Advocate · Chambers
         </div>
       </div>
     </div>
