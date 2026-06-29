@@ -9,15 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiIntakeFollowupRouteImport } from './routes/api/intake-followup'
+import { Route as ApiCitationsRouteImport } from './routes/api/citations'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedIntakeRouteImport } from './routes/_authenticated/intake'
 import { Route as AuthenticatedDraftsIndexRouteImport } from './routes/_authenticated/drafts/index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat/index'
 import { Route as AuthenticatedDraftsDraftIdRouteImport } from './routes/_authenticated/drafts/$draftId'
 import { Route as AuthenticatedChatThreadIdRouteImport } from './routes/_authenticated/chat/$threadId'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -27,10 +36,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIntakeFollowupRoute = ApiIntakeFollowupRouteImport.update({
+  id: '/api/intake-followup',
+  path: '/api/intake-followup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCitationsRoute = ApiCitationsRouteImport.update({
+  id: '/api/citations',
+  path: '/api/citations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedIntakeRoute = AuthenticatedIntakeRouteImport.update({
   id: '/intake',
@@ -63,8 +87,12 @@ const AuthenticatedChatThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/intake': typeof AuthenticatedIntakeRoute
+  '/templates': typeof AuthenticatedTemplatesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/citations': typeof ApiCitationsRoute
+  '/api/intake-followup': typeof ApiIntakeFollowupRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
@@ -72,8 +100,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/intake': typeof AuthenticatedIntakeRoute
+  '/templates': typeof AuthenticatedTemplatesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/citations': typeof ApiCitationsRoute
+  '/api/intake-followup': typeof ApiIntakeFollowupRoute
   '/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
@@ -83,8 +115,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/_authenticated/intake': typeof AuthenticatedIntakeRoute
+  '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/citations': typeof ApiCitationsRoute
+  '/api/intake-followup': typeof ApiIntakeFollowupRoute
   '/_authenticated/chat/$threadId': typeof AuthenticatedChatThreadIdRoute
   '/_authenticated/drafts/$draftId': typeof AuthenticatedDraftsDraftIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
@@ -94,8 +130,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/intake'
+    | '/templates'
     | '/api/chat'
+    | '/api/citations'
+    | '/api/intake-followup'
     | '/chat/$threadId'
     | '/drafts/$draftId'
     | '/chat/'
@@ -103,8 +143,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/intake'
+    | '/templates'
     | '/api/chat'
+    | '/api/citations'
+    | '/api/intake-followup'
     | '/chat/$threadId'
     | '/drafts/$draftId'
     | '/chat'
@@ -113,8 +157,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/auth'
     | '/_authenticated/intake'
+    | '/_authenticated/templates'
     | '/api/chat'
+    | '/api/citations'
+    | '/api/intake-followup'
     | '/_authenticated/chat/$threadId'
     | '/_authenticated/drafts/$draftId'
     | '/_authenticated/chat/'
@@ -124,11 +172,21 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCitationsRoute: typeof ApiCitationsRoute
+  ApiIntakeFollowupRoute: typeof ApiIntakeFollowupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -143,12 +201,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/intake-followup': {
+      id: '/api/intake-followup'
+      path: '/api/intake-followup'
+      fullPath: '/api/intake-followup'
+      preLoaderRoute: typeof ApiIntakeFollowupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/citations': {
+      id: '/api/citations'
+      path: '/api/citations'
+      fullPath: '/api/citations'
+      preLoaderRoute: typeof ApiCitationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/templates': {
+      id: '/_authenticated/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof AuthenticatedTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/intake': {
       id: '/_authenticated/intake'
@@ -190,6 +269,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIntakeRoute: typeof AuthenticatedIntakeRoute
+  AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedChatThreadIdRoute: typeof AuthenticatedChatThreadIdRoute
   AuthenticatedDraftsDraftIdRoute: typeof AuthenticatedDraftsDraftIdRoute
   AuthenticatedChatIndexRoute: typeof AuthenticatedChatIndexRoute
@@ -198,6 +278,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIntakeRoute: AuthenticatedIntakeRoute,
+  AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedChatThreadIdRoute: AuthenticatedChatThreadIdRoute,
   AuthenticatedDraftsDraftIdRoute: AuthenticatedDraftsDraftIdRoute,
   AuthenticatedChatIndexRoute: AuthenticatedChatIndexRoute,
@@ -210,7 +291,10 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCitationsRoute: ApiCitationsRoute,
+  ApiIntakeFollowupRoute: ApiIntakeFollowupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
