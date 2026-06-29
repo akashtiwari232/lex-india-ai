@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      draft_versions: {
+        Row: {
+          content: string
+          created_at: string
+          draft_id: string
+          id: string
+          note: string | null
+          user_id: string
+          version_no: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          draft_id: string
+          id?: string
+          note?: string | null
+          user_id: string
+          version_no: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          draft_id?: string
+          id?: string
+          note?: string | null
+          user_id?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_versions_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drafts: {
         Row: {
           content: string
@@ -86,6 +124,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          description: string | null
+          doc_type: string
+          id: string
+          title: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string
+          description?: string | null
+          doc_type: string
+          id?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          doc_type?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
       }
       threads: {
         Row: {
