@@ -66,6 +66,9 @@ export function setCurrentUser(userId: string | null) {
     if (userId) window.localStorage.setItem("lexlaw.currentUser", userId);
     else window.localStorage.removeItem("lexlaw.currentUser");
   }
+  // Snapshot cache is keyed by namespaced key, but consumers read via
+  // unchanged getters — clear so they re-resolve under the new namespace.
+  if (typeof snapshotCache !== "undefined") snapshotCache.clear?.();
   notify();
 }
 
@@ -94,19 +97,37 @@ function notify() {
   subscribers.forEach((fn) => fn());
 }
 
+// Snapshot cache: keep stable references unless the underlying raw string changes.
+const snapshotCache = new Map<string, { raw: string | null; value: unknown }>();
+
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
+  const fullKey = ns(key);
+  let raw: string | null = null;
   try {
-    const raw = window.localStorage.getItem(ns(key));
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
+    raw = window.localStorage.getItem(fullKey);
   } catch {
     return fallback;
   }
+  const cached = snapshotCache.get(fullKey);
+  if (cached && cached.raw === raw) return cached.value as T;
+  let value: T = fallback;
+  if (raw) {
+    try {
+      value = JSON.parse(raw) as T;
+    } catch {
+      value = fallback;
+    }
+  }
+  snapshotCache.set(fullKey, { raw, value });
+  return value;
 }
 function write<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(ns(key), JSON.stringify(value));
+  const fullKey = ns(key);
+  const raw = JSON.stringify(value);
+  window.localStorage.setItem(fullKey, raw);
+  snapshotCache.set(fullKey, { raw, value });
   notify();
 }
 
@@ -115,9 +136,12 @@ export function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const getThreadsSnapshot = () => read<LocalThread[]>(THREADS, []);
-const getMessagesSnapshot = () => read<LocalMessage[]>(MESSAGES, []);
-const getDraftsSnapshot = () => read<LocalDraft[]>(DRAFTS, []);
+const EMPTY_THREADS: LocalThread[] = [];
+const EMPTY_MESSAGES: LocalMessage[] = [];
+const EMPTY_DRAFTS: LocalDraft[] = [];
+const getThreadsSnapshot = () => read<LocalThread[]>(THREADS, EMPTY_THREADS);
+const getMessagesSnapshot = () => read<LocalMessage[]>(MESSAGES, EMPTY_MESSAGES);
+const getDraftsSnapshot = () => read<LocalDraft[]>(DRAFTS, EMPTY_DRAFTS);
 
 export function useThreads(): LocalThread[] {
   return useSyncExternalStore(subscribe, getThreadsSnapshot, () => [] as LocalThread[]);
