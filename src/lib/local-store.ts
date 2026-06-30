@@ -66,6 +66,9 @@ export function setCurrentUser(userId: string | null) {
     if (userId) window.localStorage.setItem("lexlaw.currentUser", userId);
     else window.localStorage.removeItem("lexlaw.currentUser");
   }
+  // Snapshot cache is keyed by namespaced key, but consumers read via
+  // unchanged getters — clear so they re-resolve under the new namespace.
+  if (typeof snapshotCache !== "undefined") snapshotCache.clear?.();
   notify();
 }
 
