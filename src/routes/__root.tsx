@@ -17,6 +17,7 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 
 import appCss from "../styles.css?url";
+import faviconAsset from "../assets/lexlaw-favicon.png.asset.json";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -97,7 +98,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: faviconAsset.url },
+      { rel: "apple-touch-icon", sizes: "512x512", href: faviconAsset.url },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
