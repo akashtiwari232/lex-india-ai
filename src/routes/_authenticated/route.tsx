@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   createFileRoute,
   Outlet,
@@ -15,11 +15,13 @@ import {
   LogOut,
   Library,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { useThreads, createThread, deleteThread } from "@/lib/local-store";
+import { useThreads, deleteThread } from "@/lib/local-store";
 import { useAuth, signOut } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -30,10 +32,17 @@ export const Route = createFileRoute("/_authenticated")({
 function WorkspaceLayout() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
+
+  // close mobile sidebar on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   if (loading || !user) {
     return (
@@ -44,16 +53,40 @@ function WorkspaceLayout() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <ChambersSidebar email={user.email ?? ""} />
-      <main className="flex-1 overflow-hidden">
-        <Outlet />
-      </main>
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-background text-foreground">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex">
+        <SidebarContent email={user.email ?? ""} />
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Mobile top bar */}
+        <div className="flex items-center justify-between gap-2 border-b border-border bg-card/70 px-3 py-2 backdrop-blur md:hidden">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[85vw] max-w-[320px] p-0">
+              <SidebarContent email={user.email ?? ""} />
+            </SheetContent>
+          </Sheet>
+          <Link to="/chat" className="min-w-0 truncate">
+            <LexLogo />
+          </Link>
+          <div className="w-9" />
+        </div>
+
+        <main className="min-w-0 flex-1 overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
 
-function ChambersSidebar({ email }: { email: string }) {
+function SidebarContent({ email }: { email: string }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const threads = useThreads();
@@ -73,7 +106,7 @@ function ChambersSidebar({ email }: { email: string }) {
   }
 
   return (
-    <aside className="flex h-screen w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full w-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:w-72">
       <div className="border-b border-sidebar-border p-4">
         <Link to="/chat" className="block">
           <LexLogo />
@@ -137,7 +170,7 @@ function ChambersSidebar({ email }: { email: string }) {
                   e.preventDefault();
                   if (confirm("Discard this brief?")) removeThread(t.id);
                 }}
-                className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
+                className="opacity-100 transition hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                 aria-label="Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -171,6 +204,6 @@ function ChambersSidebar({ email }: { email: string }) {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
