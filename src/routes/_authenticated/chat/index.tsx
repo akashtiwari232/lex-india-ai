@@ -21,13 +21,13 @@ function ChatIndex() {
 
   return (
     <div className="bg-parchment-paper h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-8 py-12">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
         <div className="text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-card px-3 py-1 text-xs font-medium uppercase tracking-widest text-primary">
             <Gavel className="h-3.5 w-3.5 text-gold" />
             Begin a Draft
           </div>
-          <h1 className="mt-4 font-serif text-4xl font-semibold text-foreground">
+          <h1 className="mt-4 font-serif text-3xl font-semibold text-foreground sm:text-4xl">
             What shall we draft today, Counsel?
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
