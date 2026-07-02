@@ -47,26 +47,28 @@ export const Route = createFileRoute("/api/citations")({
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");
 
-        const result = await generateText({
-          model,
-          system: `You are an Indian-law citation verifier. For each citation provided, judge whether it appears to be a genuine, well-formed reference to actual Indian law (statute, section, or reported judgment) or whether it looks fabricated/hallucinated. Be conservative: mark "uncertain" unless you are confident.
+        try {
+          const result = await generateText({
+            model,
+            system: `You are an Indian-law citation verifier. For each citation provided, judge whether it appears to be a genuine, well-formed reference to actual Indian law (statute, section, or reported judgment) or whether it looks fabricated/hallucinated. Be conservative: mark "uncertain" unless you are confident.
 
 Respond ONLY with a JSON array of objects: [{"citation": string, "status": "verified" | "uncertain" | "likely_incorrect", "note": string}]. No prose, no markdown fence.`,
-          prompt: `Citations to evaluate:\n${citations.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
-        });
+            prompt: `Citations to evaluate:\n${citations.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
+          });
 
-        let parsed: Array<{ citation: string; status: string; note: string }> = [];
-        try {
+          let parsed: Array<{ citation: string; status: string; note: string }> = [];
           const cleaned = result.text.replace(/```json|```/g, "").trim();
           parsed = JSON.parse(cleaned);
+          return Response.json({ citations: parsed });
         } catch {
-          parsed = citations.map((c) => ({
-            citation: c,
-            status: "uncertain",
-            note: "Could not parse verifier response.",
-          }));
+          return Response.json({
+            citations: citations.map((c) => ({
+              citation: c,
+              status: "uncertain",
+              note: "AI citation verification is unavailable right now; please verify manually before filing.",
+            })),
+          });
         }
-        return Response.json({ citations: parsed });
       },
     },
   },
