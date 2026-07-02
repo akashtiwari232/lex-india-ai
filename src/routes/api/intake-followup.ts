@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { generateText } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { fallbackFollowups, getLovableServerKey } from "@/lib/fallback-drafting";
 
 export const Route = createFileRoute("/api/intake-followup")({
   server: {
@@ -12,8 +13,8 @@ export const Route = createFileRoute("/api/intake-followup")({
           answers?: Record<string, string>;
         };
 
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("missing api key", { status: 500 });
+        const key = getLovableServerKey();
+        if (!key) return Response.json({ followups: fallbackFollowups(body.docType) });
 
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");
@@ -36,9 +37,9 @@ Respond ONLY with a JSON array of objects: [{"name": "short_field_name", "label"
           const cleaned = result.text.replace(/```json|```/g, "").trim();
           parsed = JSON.parse(cleaned);
         } catch {
-          parsed = [];
+          parsed = fallbackFollowups(body.docType);
         }
-        return Response.json({ followups: parsed });
+        return Response.json({ followups: parsed.length ? parsed : fallbackFollowups(body.docType) });
       },
     },
   },

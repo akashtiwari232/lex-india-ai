@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { generateText } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { getLovableServerKey } from "@/lib/fallback-drafting";
 
 const CITATION_PATTERNS: RegExp[] = [
   /\bAIR\s+\d{4}\s+SC\s+\d+/g,
@@ -32,8 +33,16 @@ export const Route = createFileRoute("/api/citations")({
           return Response.json({ citations: [] });
         }
 
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("missing api key", { status: 500 });
+        const key = getLovableServerKey();
+        if (!key) {
+          return Response.json({
+            citations: citations.map((citation) => ({
+              citation,
+              status: "uncertain",
+              note: "Citation format detected. Server AI verification key is not configured on this deployment; please verify before filing.",
+            })),
+          });
+        }
 
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");

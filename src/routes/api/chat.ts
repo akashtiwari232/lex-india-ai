@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { buildSystemPrompt } from "@/lib/legal-system-prompt";
+import { fallbackChatResponse, getLovableServerKey } from "@/lib/fallback-drafting";
 
 type Body = {
   messages?: UIMessage[];
@@ -19,9 +20,9 @@ export const Route = createFileRoute("/api/chat")({
           return new Response("messages required", { status: 400 });
         }
 
-        const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+        const LOVABLE_API_KEY = getLovableServerKey();
         if (!LOVABLE_API_KEY) {
-          return new Response("Missing LOVABLE_API_KEY on server", { status: 500 });
+          return fallbackChatResponse(messages, docCategory, docType);
         }
 
         const gateway = createLovableAiGatewayProvider(LOVABLE_API_KEY);
