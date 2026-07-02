@@ -16,6 +16,7 @@ import { ArrowLeft, Gavel, ScrollText, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildIntakePrompt, getIntakeSchema, type IntakeField } from "@/lib/intake-schema";
 import { createThread } from "@/lib/local-store";
+import { fallbackFollowups } from "@/lib/intake-fallbacks";
 
 const searchSchema = z.object({
   category: z.string().optional(),
@@ -68,6 +69,7 @@ function IntakePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ docCategory, docType, answers: values }),
       });
+      if (!res.ok) throw new Error("Using built-in follow-up questions.");
       const data = (await res.json()) as { followups: Followup[] };
       if (data.followups?.length) {
         setFollowups(data.followups);
@@ -77,7 +79,9 @@ function IntakePage() {
         finalize();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not fetch follow-ups");
+      setFollowups(fallbackFollowups(docType));
+      setStep("followup");
+      toast.info(e instanceof Error ? e.message : "Using built-in follow-up questions.");
     } finally {
       setLoadingAI(false);
     }
