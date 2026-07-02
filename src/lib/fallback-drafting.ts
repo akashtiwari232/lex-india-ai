@@ -146,11 +146,14 @@ export function fallbackChatResponse(
   docCategory?: string | null,
   docType?: string | null,
 ): Response {
-  const text = fallbackDraftFromMessages(messages, docCategory, docType);
+  return chatTextResponse(messages, fallbackDraftFromMessages(messages, docCategory, docType));
+}
+
+export function chatTextResponse(messages: UIMessage[], text: string): Response {
   const stream = createUIMessageStream<UIMessage>({
     originalMessages: messages,
     execute({ writer }) {
-      const id = "fallback-draft";
+      const id = "draft-response";
       writer.write({ type: "text-start", id });
       writer.write({ type: "text-delta", id, delta: text });
       writer.write({ type: "text-end", id });

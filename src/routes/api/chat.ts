@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, generateText, type UIMessage } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { buildSystemPrompt } from "@/lib/legal-system-prompt";
-import { fallbackChatResponse, getLovableServerKey } from "@/lib/fallback-drafting";
+import {
+  chatTextResponse,
+  fallbackChatResponse,
+  fallbackDraftFromMessages,
+  getLovableServerKey,
+} from "@/lib/fallback-drafting";
 
 type Body = {
   messages?: UIMessage[];
@@ -28,13 +33,17 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(LOVABLE_API_KEY);
         const model = gateway("google/gemini-3-flash-preview");
 
-        const result = streamText({
-          model,
-          system: buildSystemPrompt(docCategory, docType),
-          messages: await convertToModelMessages(messages),
-        });
+        try {
+          const result = await generateText({
+            model,
+            system: buildSystemPrompt(docCategory, docType),
+            messages: await convertToModelMessages(messages),
+          });
 
-        return result.toUIMessageStreamResponse({ originalMessages: messages });
+          return chatTextResponse(messages, result.text);
+        } catch {
+          return chatTextResponse(messages, fallbackDraftFromMessages(messages, docCategory, docType));
+        }
       },
     },
   },
