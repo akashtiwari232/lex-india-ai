@@ -34,8 +34,13 @@ function lastUserText(messages: UIMessage[]): string {
 
 function extractFromPrompt(prompt: string, label: string): string {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = prompt.match(new RegExp(`\\*\\*${escaped}:\\*\\*\\s*([^\n]+)`, "i"));
-  return safeText(match?.[1]);
+  const marker = new RegExp(`-\\s*\\*\\*${escaped}:\\*\\*\\s*`, "i");
+  const match = marker.exec(prompt);
+  if (!match) return "";
+  const start = match.index + match[0].length;
+  const rest = prompt.slice(start);
+  const next = rest.search(/\n(?:-\s*\*\*|###\s|---)/);
+  return safeText(next >= 0 ? rest.slice(0, next) : rest);
 }
 
 function extractBullets(prompt: string): string[] {
