@@ -40,7 +40,8 @@ export const Route = createFileRoute("/api/chat")({
             messages: await convertToModelMessages(messages),
           });
 
-          return chatTextResponse(messages, result.text);
+          const text = result.text.trim() || fallbackDraftFromMessages(messages, docCategory, docType);
+          return chatTextResponse(messages, text);
         } catch {
           return chatTextResponse(messages, fallbackDraftFromMessages(messages, docCategory, docType));
         }
